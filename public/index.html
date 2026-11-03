@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Game Madness</title>
+<meta name="description" content="Pitch game ideas, vote through a March Madness bracket, and pick the next game to build.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: scoreboard header band, three-step tabs (Pitch → Bracket → Results), one focused panel at a time. */
+:root{
+  --bg:#eceef3; --surface:#ffffff; --ink:#151a2e; --muted:#5c6380; --line:#d4d8e4;
+  --accent:#ff5a1f; --accent-ink:#ffffff; --court:#1d2b6b; --court-ink:#f2f4ff;
+  --good:#11845b; --warn:#b4570b; --soft:#f5f6fa; --win:#fff1ea;
+  --display:"Big Shoulders Display","Impact","Arial Narrow",sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1120; --surface:#171b2f; --ink:#eef0fa; --muted:#9aa1bf; --line:#2a3050;
+  --accent:#ff6a33; --accent-ink:#1a0a03; --court:#22306f; --court-ink:#f2f4ff;
+  --good:#3ccf95; --warn:#f0a05a; --soft:#1d2238; --win:#3a2116; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1120; --surface:#171b2f; --ink:#eef0fa; --muted:#9aa1bf; --line:#2a3050;
+  --accent:#ff6a33; --accent-ink:#1a0a03; --court:#22306f; --court-ink:#f2f4ff;
+  --good:#3ccf95; --warn:#f0a05a; --soft:#1d2238; --win:#3a2116; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+body{margin:0}
+.foot{padding-block:0 32px;font-size:13px}
+.foot a{color:var(--muted)}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* Header band */
+.band{background:var(--court);color:var(--court-ink)}
+.band .wrap{padding-block:28px 0;display:grid;gap:18px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+h1{font-family:var(--display);font-weight:900;font-size:clamp(44px,9vw,84px);line-height:.9;margin:4px 0 0;text-transform:uppercase;letter-spacing:.01em;text-wrap:balance}
+h1 em{font-style:normal;color:var(--accent)}
+.board{display:flex;flex-wrap:wrap;gap:10px}
+.chip{font-family:var(--mono);font-size:13px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:6px 10px;font-variant-numeric:tabular-nums}
+.chip b{color:var(--accent);font-weight:700}
+.tabs{display:flex;gap:4px;overflow-x:auto}
+.tab{background:none;border:0;border-radius:8px 8px 0 0;padding:12px 16px;color:var(--court-ink);opacity:.7;cursor:pointer;font-weight:700;white-space:nowrap;display:flex;gap:8px;align-items:center}
+.tab .n{font-family:var(--mono);font-size:12px;border:1.5px solid currentColor;border-radius:50%;width:22px;height:22px;display:grid;place-items:center}
+.tab[aria-selected="true"]{background:var(--bg);color:var(--ink);opacity:1}
+.tab[aria-selected="true"] .n{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
+main .wrap{padding-block:24px 56px;display:grid;gap:20px}
+h2{font-family:var(--display);font-weight:700;font-size:32px;line-height:1;margin:0;text-transform:uppercase;letter-spacing:.02em}
+.lede{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:14px;min-width:0}
+.note{background:var(--soft);border-radius:10px;padding:14px 16px;color:var(--muted)}
+.note strong{color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+label{font-weight:600;font-size:14px}
+.field{display:grid;gap:6px;min-width:0;flex:1 1 220px}
+input[type=text],textarea,input[type=datetime-local]{background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
+textarea{resize:vertical;min-height:60px}
+.btn{border:0;border-radius:8px;padding:11px 18px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn.small{padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.hint{font-size:13px;color:var(--muted)}
+.err{color:var(--warn);font-size:14px;font-weight:600}
+
+/* idea list */
+.ideas{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ideas li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.seed{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px;font-variant-numeric:tabular-nums}
+.ideas .name{font-weight:700;overflow-wrap:anywhere}
+.ideas .pitch{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.ideas .by{font-size:12px;color:var(--muted);margin-top:2px}
+.empty{border:2px dashed var(--line);border-radius:12px;padding:28px;text-align:center;color:var(--muted)}
+
+/* matchup */
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch}
+.pick{border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:22px 18px;cursor:pointer;text-align:left;display:grid;gap:6px;min-height:150px;align-content:center;transition:transform .12s,border-color .12s}
+.pick:hover{border-color:var(--accent);transform:translateY(-2px)}
+.pick .gn{font-family:var(--display);font-weight:900;font-size:clamp(24px,4vw,34px);line-height:1;text-transform:uppercase;overflow-wrap:anywhere}
+.pick .gp{color:var(--muted);font-size:14px}
+.vsmark{font-family:var(--display);font-weight:900;font-size:28px;color:var(--accent);display:grid;place-items:center}
+@media (max-width:560px){.vs{grid-template-columns:1fr}.vsmark{padding:2px 0}.pick{min-height:110px}}
+.progress{height:8px;background:var(--soft);border-radius:4px;overflow:hidden}
+.progress span{display:block;height:100%;background:var(--accent);transition:width .25s}
+.roundname{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700}
+
+/* bracket */
+.bracket-scroll{overflow-x:auto;padding-bottom:6px}
+.bracket{display:flex;gap:18px;min-width:min-content}
+.col{display:flex;flex-direction:column;justify-content:space-around;gap:10px;min-width:150px}
+.col h4{margin:0 0 4px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.m{border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:13px;background:var(--surface)}
+.m div{padding:6px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.m div+div{border-top:1px solid var(--line)}
+.m .w{background:var(--win);font-weight:700}
+.m .l{color:var(--muted);text-decoration:line-through}
+.m .tbd{color:var(--muted);font-style:italic}
+.m.now{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+
+/* champion */
+.champ{background:var(--court);color:var(--court-ink);border-radius:14px;padding:26px 22px;display:grid;gap:6px}
+.champ .gn{font-family:var(--display);font-weight:900;font-size:clamp(34px,7vw,56px);line-height:.95;text-transform:uppercase;color:var(--accent);overflow-wrap:anywhere}
+
+/* results */
+.results{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.res{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center}
+.res .rk{font-family:var(--display);font-weight:900;font-size:26px;color:var(--muted);text-align:center}
+.res:first-child .rk{color:var(--accent)}
+.res .bar{height:10px;border-radius:5px;background:var(--soft);overflow:hidden;margin-top:6px}
+.res .bar span{display:block;height:100%;background:var(--court)}
+.res:first-child .bar span{background:var(--accent)}
+.res .nm{font-weight:700;overflow-wrap:anywhere}
+.res .ct{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;font-size:14px}
+.res .ct small{display:block;color:var(--muted);font-size:11px}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:99px;background:var(--soft);color:var(--muted);font-weight:700}
+.pill.live{background:var(--win);color:var(--accent)}
+.host{border:1.5px dashed var(--accent)}
+.host h3{margin:0;font-family:var(--display);font-size:22px;text-transform:uppercase;letter-spacing:.03em}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="band">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">Pitch it · Bracket it · I build it</div>
+      <h1>Game <em>Madness</em></h1>
+    </div>
+    <div class="board" id="board"><span class="chip">Loading the bracket…</span></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="pitch" aria-selected="true"><span class="n">1</span>Pitch a game</button>
+      <button class="tab" role="tab" data-tab="vote" aria-selected="false"><span class="n">2</span>Fill your bracket</button>
+      <button class="tab" role="tab" data-tab="results" aria-selected="false"><span class="n">3</span>Results</button>
+    </nav>
+  </div>
+</header>
+<main><div class="wrap" id="main"></div></main>
+<footer class="wrap foot"><a href="#host" id="hostLink">Host login</a></footer>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const MAX_PER_PERSON = 3;
+const S = {data:null,tab:'pitch',tabChosen:false,votes:null,editing:false,err:'',loadErr:'',hostView:location.hash==='#host',busy:false};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+
+let VOTER=store.get('gm-voter');
+if(!VOTER){VOTER=Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>b.toString(16).padStart(2,'0')).join('');store.set('gm-voter',VOTER)}
+let HOST=store.get('gm-host')||'';
+
+async function api(method, body){
+  const r=await fetch('/api/state',{method,headers:{'content-type':'application/json','x-voter':VOTER,...(HOST?{'x-host':HOST}:{})},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({error:'Something went wrong. Try again.'}));
+  if(!r.ok) throw new Error(j.error||'Something went wrong. Try again.');
+  return j;
+}
+async function refresh(){
+  try{const d=await api('GET'); const before=S.data?.phase; S.data=d; S.loadErr='';
+    if(!S.tabChosen||before!==d.phase) autoTab();
+    if(document.activeElement?.closest?.('form')) renderBoard(); else render();
+  }catch(e){S.loadErr=e.message;render()}
+}
+async function act(body, okMsg){
+  if(S.busy) return; S.busy=true; S.err='';
+  try{S.data=await api('POST',body); if(okMsg) toast(okMsg); return true}
+  catch(e){S.err=e.message; return false}
+  finally{S.busy=false; render()}
+}
+
+/* ---------- helpers ---------- */
+const D=()=>S.data||{phase:'submit',ideas:[],games:[],ballots:0};
+function deadline(){return D().deadline?new Date(D().deadline):null}
+function defaultDeadline(){const d=new Date();d.setDate(d.getDate()+((5-d.getDay()+7)%7));d.setHours(15,0,0,0);if(d<=new Date())d.setDate(d.getDate()+7);return d}
+function fmtDate(d){return d.toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+function left(d){let ms=d-new Date();if(ms<=0)return 'closed';const m=Math.floor(ms/6e4),h=Math.floor(m/60),dd=Math.floor(h/24);return dd?`${dd}d ${h%24}h left`:h?`${h}h ${m%60}m left`:`${m}m left`}
+function toLocalInput(d){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
+function phase(){const p=D().phase,d=deadline();return p==='vote'&&d&&d<=new Date()?'closed':p}
+function gameById(id){return D().games.find(g=>g.id===id)}
+function autoTab(){const p=phase();S.tab=p==='submit'?'pitch':p==='vote'?'vote':'results'}
+function roundName(n){return n===1?'Final':n===2?'Semifinals':n===4?'Quarterfinals':`Round of ${n*2}`}
+
+function walk(ids,votes){
+  let size=1;while(size<ids.length)size*=2;
+  const half=size/2,r0=[];for(let i=0;i<half;i++)r0.push([ids[i]??null,ids[half+i]??null]);
+  const w={rounds:[r0],wins:[[]],current:null,champ:null};let v=0;const q=[...votes];
+  while(true){const r=w.rounds.length-1,ms=w.rounds[r];
+    while(w.wins[r].length<ms.length){const m=w.wins[r].length,[a,b]=ms[m];
+      if(!(a&&b)){w.wins[r].push(a||b);continue}
+      if(q.length&&(q[0]===a||q[0]===b)){w.wins[r].push(q.shift());v++;continue}
+      w.current={r,m,a,b};break}
+    if(w.current)break;
+    if(ms.length===1){w.champ=w.wins[r][0];break}
+    const nx=[];for(let i=0;i<w.wins[r].length;i+=2)nx.push([w.wins[r][i],w.wins[r][i+1]]);
+    w.rounds.push(nx);w.wins.push([])}
+  w.done=v;w.total=ids.length-1;return w;
+}
+
+/* ---------- render ---------- */
+function render(){
+  for(const b of document.querySelectorAll('.tab')) b.setAttribute('aria-selected',String(b.dataset.tab===S.tab));
+  renderBoard();
+  let h='';
+  if(S.loadErr) h+=`<div class="note"><strong>Can't load the bracket right now.</strong> ${esc(S.loadErr)} It retries on its own.</div>`;
+  if(!S.data && !S.loadErr) h+=`<div class="empty">Loading the bracket…</div>`;
+  else h+= S.tab==='pitch'?viewPitch():S.tab==='vote'?viewVote():viewResults();
+  if(S.hostView || D().isHost) h+=viewHost();
+  $('#main').innerHTML=h;
+  const di=$('#dl'); if(di&&!di.value) di.value=toLocalInput(deadline()&&deadline()>new Date()?deadline():defaultDeadline());
+  $('#hostLink').hidden=S.hostView||D().isHost;
+}
+function renderBoard(){
+  if(!S.data){return}
+  const p=phase(),d=deadline(),n=D().ideas.length;
+  let h=`<span class="chip"><b>●</b> ${{submit:'Pitches open',vote:'Voting open',closed:'Voting closed'}[p]}</span>`;
+  h+= p==='submit'?`<span class="chip">${n} game${n===1?'':'s'} pitched</span>`:`<span class="chip">${D().games.length} games · ${D().ballots} bracket${D().ballots===1?'':'s'} in</span>`;
+  if(d) h+=`<span class="chip">Voting ends ${esc(fmtDate(d))}${p==='vote'?` · <b>${left(d)}</b>`:''}</span>`;
+  $('#board').innerHTML=h;
+}
+
+function viewPitch(){
+  const p=phase(),ideas=D().ideas,mine=ideas.filter(i=>i.mine).length;
+  let h=`<div><h2>Pitch a game</h2><p class="lede">What game should get built next? Add up to ${MAX_PER_PERSON} ideas. Once the list is locked, every idea gets a spot in the bracket.</p></div>`;
+  if(p==='submit'){
+    if(mine>=MAX_PER_PERSON) h+=`<div class="note">You've pitched ${MAX_PER_PERSON} games, the max. Remove one below to swap in a new idea.</div>`;
+    else h+=`<form class="panel" id="pitchForm">
+      <div class="row" style="align-items:flex-end">
+        <div class="field" style="flex:3 1 260px"><label for="gname">Game name or idea</label><input type="text" id="gname" maxlength="60" placeholder="e.g. Zombie dodgeball" required></div>
+        <div class="field" style="flex:1 1 160px"><label for="gauthor">Your name <span class="hint">(optional)</span></label><input type="text" id="gauthor" maxlength="30" value="${esc(store.get('gm-name')||'')}"></div>
+      </div>
+      <div class="field"><label for="gpitch">Sell it in one line <span class="hint">(optional)</span></label><textarea id="gpitch" maxlength="140" placeholder="What makes it fun?"></textarea></div>
+      <div class="row"><button class="btn" type="submit" ${S.busy?'disabled':''}>Add to the bracket</button><span class="hint">${mine}/${MAX_PER_PERSON} pitched by you</span></div>
+      ${S.err?`<div class="err">${esc(S.err)}</div>`:''}
+    </form>`;
+  } else h+=`<div class="note">Pitches are locked. ${D().games.length} games made the bracket. Head to <strong>Fill your bracket</strong>.</div>`;
+  const list=p==='submit'?ideas:D().games;
+  if(!list.length) h+=`<div class="empty"><strong>No games pitched yet.</strong><br>Be the first. Your idea shows up here for everyone.</div>`;
+  else h+=`<ul class="ideas">${list.map((g,i)=>`<li><span class="seed">${String(i+1).padStart(2,'0')}</span><div style="min-width:0"><div class="name">${esc(g.name)}</div>${g.pitch?`<div class="pitch">${esc(g.pitch)}</div>`:''}${p==='submit'?`<div class="by">${esc(g.author||'Anonymous')}${g.mine?' (you)':''}</div>`:''}</div>
+    ${p==='submit'&&(g.mine||D().isHost)?`<button class="btn ghost small" data-del="${esc(g.id)}">Remove</button>`:'<span></span>'}</li>`).join('')}</ul>`;
+  return h;
+}
+
+function viewVote(){
+  const p=phase();let h=`<div><h2>Fill your bracket</h2><p class="lede">Pick a winner in each matchup until one game is left. Every time you pick a game, it gets a vote. Games that go deep in a lot of brackets rack up the most votes.</p></div>`;
+  if(p==='submit') return h+`<div class="empty"><strong>The bracket isn't set yet.</strong><br>Voting opens once the pitch list is locked. Add your idea on the Pitch tab while you wait.</div>`;
+  if(p==='closed') return h+`<div class="note">Voting is closed. See who won on the <strong>Results</strong> tab.</div>`;
+  const ids=D().games.map(g=>g.id),mine=D().myBallot;
+  if(mine&&!S.editing){
+    return h+`<div class="champ"><span class="eyebrow">Your bracket is in · your champion</span><div class="gn">${esc(gameById(mine.champion)?.name||'—')}</div><span style="opacity:.8">You cast ${mine.votes.length} votes. You can redo your bracket until voting ends.</span></div>
+      <div class="row"><button class="btn ghost" id="redo">Redo my bracket</button></div>${bracketView(walk(ids,mine.votes))}`;
+  }
+  if(!S.votes) S.votes=[];
+  const w=walk(ids,S.votes);
+  if(w.champ) return h+`<div class="champ"><span class="eyebrow">Your champion</span><div class="gn">${esc(gameById(w.champ)?.name)}</div></div>
+    <div class="row"><button class="btn" id="submitBallot" ${S.busy?'disabled':''}>Submit my bracket</button><button class="btn ghost" id="undo">Undo last pick</button></div>
+    ${S.err?`<div class="err">${esc(S.err)}</div>`:''}${bracketView(w)}`;
+  const c=w.current,A=gameById(c.a),B=gameById(c.b),pct=Math.round(100*w.done/w.total);
+  const card=g=>`<button class="pick" data-pick="${esc(g.id)}"><span class="gn">${esc(g.name)}</span>${g.pitch?`<span class="gp">${esc(g.pitch)}</span>`:''}</button>`;
+  return h+`<div class="panel">
+    <div class="row" style="justify-content:space-between"><span class="roundname">${roundName(w.rounds[c.r].length)} · Match ${c.m+1} of ${w.rounds[c.r].length}</span><span class="hint">${w.done} of ${w.total} picks</span></div>
+    <div class="progress"><span style="width:${pct}%"></span></div>
+    <div class="vs">${card(A)}<div class="vsmark">VS</div>${card(B)}</div>
+    ${w.done?`<div class="row"><button class="btn ghost small" id="undo">Undo last pick</button></div>`:''}
+  </div>${bracketView(w)}`;
+}
+
+function bracketView(w){
+  const cols=[];for(let x=w.rounds[0].length;;x/=2){cols.push(x);if(x===1)break}
+  let h=`<div class="panel"><span class="roundname">Your bracket</span><div class="bracket-scroll"><div class="bracket">`;
+  cols.forEach((cnt,r)=>{
+    h+=`<div class="col"><h4>${roundName(cnt)}</h4>`;
+    for(let m=0;m<cnt;m++){
+      const pair=w.rounds[r]?.[m],win=w.wins[r]?.[m],now=w.current&&w.current.r===r&&w.current.m===m;
+      const cell=id=>id===undefined?`<div class="tbd">TBD</div>`:id===null?`<div class="tbd">bye</div>`:`<div class="${win?(win===id?'w':'l'):''}">${esc(gameById(id)?.name)}</div>`;
+      h+=`<div class="m${now?' now':''}">${cell(pair?pair[0]:undefined)}${cell(pair?pair[1]:undefined)}</div>`;
+    }
+    h+=`</div>`;
+  });
+  if(w.champ) h+=`<div class="col"><h4>Champion</h4><div class="m"><div class="w">${esc(gameById(w.champ)?.name)}</div></div></div>`;
+  return h+`</div></div></div>`;
+}
+
+function viewResults(){
+  const p=phase();let h=`<div><h2>Results</h2><p class="lede">Every pick in every bracket counts as one vote. Most total votes wins. Ties go to the game more people picked as their champion.</p></div>`;
+  if(p==='submit') return h+`<div class="empty">No bracket yet. Results show up after voting ends.</div>`;
+  const list=D().results,ballots=D().ballots,d=deadline();
+  if(!list) return h+`<div class="empty"><strong>Results unlock when voting ends${d?` on ${esc(fmtDate(d))}`:''}.</strong><br>${ballots} bracket${ballots===1?'':'s'} turned in so far. Votes stay hidden until then so nobody just follows the crowd.</div>`;
+  if(p==='closed'&&ballots&&list[0]) h+=`<div class="champ"><span class="eyebrow">The game I'm building</span><div class="gn">${esc(list[0].name)}</div><span style="opacity:.85">${list[0].votes} votes from ${ballots} bracket${ballots===1?'':'s'}</span></div>`;
+  if(p!=='closed') h+=`<div class="note"><span class="pill live">Live · only the host sees this</span> Everyone else sees results when voting ends.</div>`;
+  if(!ballots) return h+`<div class="empty">No brackets turned in yet.</div>`;
+  const max=Math.max(1,...list.map(g=>g.votes));
+  return h+`<div class="panel"><ol class="results">${list.map((g,i)=>`<li class="res"><span class="rk">${i+1}</span><div style="min-width:0"><div class="nm">${esc(g.name)}</div><div class="bar"><span style="width:${100*g.votes/max}%"></span></div></div><div class="ct">${g.votes} votes<small>${g.champs} champion pick${g.champs===1?'':'s'}</small></div></li>`).join('')}</ol></div>`;
+}
+
+function viewHost(){
+  const d=D(),p=phase(),n=d.ideas.length;
+  if(!d.isHost){
+    if(!S.data) return '';
+    if(!d.hostClaimed) return `<form class="panel host" id="claimForm"><div class="row" style="justify-content:space-between"><h3>Become the host</h3></div>
+      <p class="hint" style="margin:0">Nobody runs this bracket yet. Set a passcode to lock in host controls (deadline, opening and closing voting). Do this before you share the link.</p>
+      <div class="row" style="align-items:flex-end"><div class="field"><label for="hp">Host passcode</label><input type="password" id="hp" minlength="6" autocomplete="new-password" required></div><button class="btn" type="submit">Claim host</button></div>
+      ${S.err?`<div class="err">${esc(S.err)}</div>`:''}</form>`;
+    return `<form class="panel host" id="loginForm"><h3>Host login</h3>
+      <div class="row" style="align-items:flex-end"><div class="field"><label for="hp">Host passcode</label><input type="password" id="hp" autocomplete="current-password" required></div><button class="btn" type="submit">Log in</button></div>
+      ${S.hostErr?`<div class="err">${esc(S.hostErr)}</div>`:''}</form>`;
+  }
+  let h=`<section class="panel host"><div class="row" style="justify-content:space-between"><h3>Host controls</h3><button class="btn ghost small" id="logout">Log out</button></div>
+    <div class="row" style="align-items:flex-end"><div class="field"><label for="dl">Voting ends</label><input type="datetime-local" id="dl"></div><button class="btn ghost" id="saveDl">Save end time</button></div>
+    <p class="hint" style="margin:0">End of the school week (Friday afternoon) gives everyone a few days to vote. A single school day works if the whole class votes at once.</p>`;
+  if(p==='submit') h+=`<div class="row"><button class="btn" id="lock" ${n<2?'disabled':''}>Lock ${n} pitches and open voting</button><span class="hint">${n<2?'Needs at least 2 games.':'Shuffles the games into a bracket.'}</span></div>`;
+  if(p==='vote') h+=`<div class="row"><button class="btn ghost" id="closeNow">End voting now</button><button class="btn ghost" id="reopenPitch">Back to pitching</button></div>`;
+  if(p==='closed') h+=`<div class="row"><button class="btn ghost" id="reopenVote">Reopen voting</button><button class="btn ghost" id="reopenPitch">Start a new round of pitches</button></div>`;
+  if(p!=='submit') h+=`<p class="hint" style="margin:0">Going back to pitching unlocks the list and wipes the brackets that were turned in.</p>`;
+  if(S.err && !S.tab) h+='';
+  return h+(S.err?`<div class="err">${esc(S.err)}</div>`:'')+`</section>`;
+}
+
+/* ---------- events ---------- */
+const dl=()=>{const v=$('#dl')?.value;return v?new Date(v).toISOString():null};
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.tab){S.tab=t.dataset.tab;S.tabChosen=true;S.err='';render();return}
+  if(t.dataset.pick){S.votes=[...S.votes,t.dataset.pick];render();window.scrollTo({top:0,behavior:'smooth'});return}
+  if(t.dataset.del){act({action:'unpitch',id:t.dataset.del},'Removed');return}
+  switch(t.id){
+    case 'undo':S.votes=S.votes.slice(0,-1);S.err='';render();break;
+    case 'redo':S.editing=true;S.votes=[];render();break;
+    case 'submitBallot':act({action:'ballot',bracketId:D().bracketId,votes:S.votes},'Bracket submitted').then(ok=>{if(ok){S.editing=false;S.votes=null;render()}});break;
+    case 'saveDl':act({action:'deadline',deadline:dl()},'End time saved');break;
+    case 'lock':act({action:'lock',deadline:dl()},'Voting is open').then(ok=>{if(ok){S.tab='vote';render()}});break;
+    case 'closeNow':act({action:'close'},'Voting ended').then(ok=>{if(ok){S.tab='results';render()}});break;
+    case 'reopenVote':act({action:'reopenVote',deadline:dl()},'Voting reopened');break;
+    case 'reopenPitch':act({action:'reopenPitch'},'Pitches reopened').then(ok=>{if(ok){S.tab='pitch';render()}});break;
+    case 'logout':HOST='';store.del('gm-host');S.hostView=false;history.replaceState(null,'',location.pathname);refresh();break;
+  }
+});
+document.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(e.target.id==='pitchForm'){
+    const author=$('#gauthor').value.trim();store.set('gm-name',author);
+    act({action:'pitch',name:$('#gname').value,pitch:$('#gpitch').value,author},'Pitched!');
+  }
+  if(e.target.id==='claimForm'){
+    const pass=$('#hp').value; HOST=pass;
+    const ok=await act({action:'claimHost',pass},'You are the host');
+    if(ok) store.set('gm-host',pass); else HOST='';
+  }
+  if(e.target.id==='loginForm'){
+    HOST=$('#hp').value; S.hostErr='';
+    await refresh();
+    if(D().isHost){store.set('gm-host',HOST);toast('Logged in as host')} else {HOST='';S.hostErr="That passcode didn't match.";render()}
+  }
+});
+window.addEventListener('hashchange',()=>{S.hostView=location.hash==='#host';render()});
+
+render(); refresh();
+setInterval(()=>{if(!document.hidden && !S.busy) refresh()},12000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden) refresh()});
+</script>
+</body>
+</html>
